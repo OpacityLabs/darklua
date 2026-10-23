@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.17.5
+
+* expose where each bundled file sits in the bundle output (`BundleSourceRange`, `WorkerTree::iter_bundle_source_ranges()`)
+* fix string literal keys in table types being shifted twice by `ShiftTokenLine` when bundling with `retain_lines`
+
 ## 0.17.4
 
 * make `Configuration::location()` public

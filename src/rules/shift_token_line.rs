@@ -278,7 +278,9 @@ impl RuleConfiguration for ShiftTokenLine {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::rules::Rule;
+    use crate::generator::{LuaGenerator, TokenBasedLuaGenerator};
+    use crate::rules::{ContextBuilder, Rule};
+    use crate::{Parser, Resources};
 
     use insta::assert_json_snapshot;
 
@@ -291,5 +293,25 @@ mod test {
         let rule: Box<dyn Rule> = Box::new(new_rule());
 
         assert_json_snapshot!("default_replace_referenced_tokens", rule);
+    }
+
+    #[test]
+    fn shift_table_type_with_string_literal_key_once() {
+        let code = "type T = {\n\t[\"a.b\"]: string,\n}\n";
+
+        let mut block = Parser::default()
+            .preserve_tokens()
+            .parse(code)
+            .expect("unable to parse code");
+
+        ShiftTokenLine::new(2).flawless_process(
+            &mut block,
+            &ContextBuilder::new(".", &Resources::from_memory(), code).build(),
+        );
+
+        let mut generator = TokenBasedLuaGenerator::new(code);
+        generator.write_block(&block);
+
+        pretty_assertions::assert_eq!(generator.into_string(), format!("\n\n{}", code));
     }
 }

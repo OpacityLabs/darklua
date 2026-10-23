@@ -1,3 +1,4 @@
+use std::convert::TryFrom;
 use std::path::{Path, PathBuf};
 
 use indexmap::IndexMap;
@@ -39,6 +40,10 @@ impl ModuleDefinition {
 }
 
 const BUNDLE_MODULES_VARIABLE_CACHE_FIELD: &str = "cache";
+
+fn bundle_line_after(shift_lines: isize) -> usize {
+    usize::try_from(shift_lines).expect("bundle line shift must not be negative") + 1
+}
 
 impl BuildModuleDefinitions {
     pub(crate) fn new(modules_identifier: impl Into<String>) -> Self {
@@ -161,6 +166,11 @@ impl BuildModuleDefinitions {
 
     pub(crate) fn apply(mut self, block: &mut Block, context: &Context) {
         if self.module_definitions.is_empty() {
+            context.add_bundle_source_range(
+                context.current_path().to_path_buf(),
+                1,
+                lines::block_total(block),
+            );
             return;
         }
 
@@ -178,10 +188,26 @@ impl BuildModuleDefinitions {
 
             ShiftTokenLine::new(shift_lines).flawless_process(&mut module.block, context);
 
+            if inserted_lines > 0 {
+                let start_line = bundle_line_after(shift_lines);
+                context.add_bundle_source_range(
+                    module.path.clone(),
+                    start_line,
+                    start_line + inserted_lines - 1,
+                );
+            }
+
             shift_lines += inserted_lines as isize;
         }
 
+        let main_lines = lines::block_total(block);
         ShiftTokenLine::new(shift_lines).flawless_process(block, context);
+        let main_start_line = bundle_line_after(shift_lines);
+        context.add_bundle_source_range(
+            context.current_path().to_path_buf(),
+            main_start_line,
+            main_start_line + main_lines.saturating_sub(1),
+        );
 
         let statements = self
             .module_definitions

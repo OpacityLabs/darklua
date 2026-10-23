@@ -72,7 +72,7 @@ pub use remove_types::*;
 pub use remove_unused_variable::*;
 pub use rename_variables::*;
 pub(crate) use replace_referenced_tokens::*;
-pub use require::{PathRequireMode, RequirePathLocator, PathLocator};
+pub use require::{PathLocator, PathRequireMode, RequirePathLocator};
 pub use rule_property::*;
 pub(crate) use shift_token_line::*;
 pub use unused_if_branch::*;
@@ -133,6 +133,7 @@ impl<'a, 'resources, 'code> ContextBuilder<'a, 'resources, 'code> {
             blocks: self.blocks,
             project_location: self.project_location,
             dependencies: Default::default(),
+            bundle_source_ranges: Default::default(),
         }
     }
 
@@ -140,6 +141,18 @@ impl<'a, 'resources, 'code> ContextBuilder<'a, 'resources, 'code> {
     pub fn insert_block<'block: 'a>(&mut self, path: impl Into<PathBuf>, block: &'block Block) {
         self.blocks.insert(path.into(), block);
     }
+}
+
+/// Where the lines of one bundled file sit in the bundle output.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BundleSourceRange {
+    /// The path of the bundled file.
+    pub path: PathBuf,
+    /// The bundle line that holds line 1 of the file.
+    pub start_line: usize,
+    /// The bundle line that holds the last line of the file. A trailing newline in the file
+    /// counts as one more line, so this can be the line right after the last text line.
+    pub end_line: usize,
 }
 
 /// A context that holds data shared across all rules applied to a file.
@@ -154,6 +167,7 @@ pub struct Context<'a, 'resources, 'code> {
     blocks: HashMap<PathBuf, &'a Block>,
     project_location: Option<PathBuf>,
     dependencies: std::cell::RefCell<Vec<PathBuf>>,
+    bundle_source_ranges: std::cell::RefCell<Vec<BundleSourceRange>>,
 }
 
 impl Context<'_, '_, '_> {
@@ -177,6 +191,29 @@ impl Context<'_, '_, '_> {
         } else {
             log::warn!("unable to submit file dependency (internal error)");
         }
+    }
+
+    /// Records where the lines of a bundled file sit in the bundle output.
+    pub(crate) fn add_bundle_source_range(
+        &self,
+        path: PathBuf,
+        start_line: usize,
+        end_line: usize,
+    ) {
+        if let Ok(mut ranges) = self.bundle_source_ranges.try_borrow_mut() {
+            ranges.push(BundleSourceRange {
+                path,
+                start_line,
+                end_line,
+            });
+        } else {
+            log::warn!("unable to submit bundle source range (internal error)");
+        }
+    }
+
+    /// Takes the recorded bundle source ranges out of the context.
+    pub(crate) fn take_bundle_source_ranges(&self) -> Vec<BundleSourceRange> {
+        self.bundle_source_ranges.take()
     }
 
     /// Consumes the context and returns an iterator over all file dependencies.

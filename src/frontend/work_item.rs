@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::{nodes::Block, utils::Timer};
+use crate::{nodes::Block, rules::BundleSourceRange, utils::Timer};
 
 use super::{DarkluaError, DarkluaResult};
 
@@ -122,6 +122,7 @@ pub(crate) struct WorkItem {
     pub(crate) data: WorkData,
     pub(crate) status: WorkStatus,
     pub(crate) external_file_dependencies: HashSet<PathBuf>,
+    pub(crate) bundle_source_ranges: Vec<BundleSourceRange>,
 }
 
 impl WorkItem {
@@ -133,6 +134,7 @@ impl WorkItem {
             },
             status: Default::default(),
             external_file_dependencies: Default::default(),
+            bundle_source_ranges: Default::default(),
         }
     }
 
@@ -155,5 +157,6 @@ impl WorkItem {
     pub(crate) fn reset(&mut self) {
         self.status = WorkStatus::NotStarted;
         self.external_file_dependencies.clear();
+        self.bundle_source_ranges.clear();
     }
 }

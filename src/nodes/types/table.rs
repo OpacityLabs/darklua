@@ -203,7 +203,7 @@ impl TableLiteralPropertyType {
         self.tokens.as_ref()
     }
 
-    super::impl_token_fns!(target = [string] iter = [tokens]);
+    super::impl_token_fns!(iter = [tokens]);
 }
 
 /// Represents an entry in a table type annotation.

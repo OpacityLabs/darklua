@@ -381,6 +381,7 @@ impl<'a> Worker<'a> {
             error
         });
 
+        work_item.bundle_source_ranges = context.take_bundle_source_ranges();
         work_item
             .external_file_dependencies
             .extend(context.into_dependencies());
